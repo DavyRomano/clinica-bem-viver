@@ -3,6 +3,70 @@
 const $ = (seletor) => document.querySelector(seletor);
 const pagina = document.body.dataset.pagina;
 const parametros = new URLSearchParams(location.search);
+const raiz = new URL("../", document.currentScript.src).pathname;
+const demonstracao = location.hostname.endsWith(".github.io");
+const catalogo = {
+  "especialidades": [
+    {
+      "area": "Geral",
+      "descricao": "Um primeiro encontro para conversar sobre sua saúde e planejar o acompanhamento.",
+      "id": 1,
+      "nome": "Clínica geral",
+      "profissionais": 1
+    },
+    {
+      "area": "Especializada",
+      "descricao": "Consultas voltadas ao coração e ao acompanhamento da saúde cardiovascular.",
+      "id": 2,
+      "nome": "Cardiologia",
+      "profissionais": 1
+    },
+    {
+      "area": "Especializada",
+      "descricao": "Atenção à saúde da pele, dos cabelos e das unhas em diferentes fases da vida.",
+      "id": 3,
+      "nome": "Dermatologia",
+      "profissionais": 1
+    },
+    {
+      "area": "Especializada",
+      "descricao": "Acompanhamento individual para envelhecer com autonomia e qualidade de vida.",
+      "id": 4,
+      "nome": "Geriatria",
+      "profissionais": 1
+    }
+  ],
+  "medicos": [
+    {
+      "especialidade": "Clínica geral",
+      "especialidade_id": 1,
+      "foto": "helena",
+      "id": 1,
+      "nome": "Dra. Helena Prado"
+    },
+    {
+      "especialidade": "Cardiologia",
+      "especialidade_id": 2,
+      "foto": "andre",
+      "id": 2,
+      "nome": "Dr. André Luz"
+    },
+    {
+      "especialidade": "Dermatologia",
+      "especialidade_id": 3,
+      "foto": "marina",
+      "id": 3,
+      "nome": "Dra. Marina Reis"
+    },
+    {
+      "especialidade": "Geriatria",
+      "especialidade_id": 4,
+      "foto": "teresa",
+      "id": 4,
+      "nome": "Dra. Teresa Vale"
+    }
+  ]
+};
 let usuario;
 let token;
 let medicos = [];
@@ -25,13 +89,18 @@ function seguro(valor) {
 
 function icone(nome) {
   return (
-    '<svg class="icon" aria-hidden="true"><use href="/img/icones.svg#' +
+    '<svg class="icon" aria-hidden="true"><use href="' + raiz + 'img/icones.svg#' +
     nome +
     '"></use></svg>'
   );
 }
 
 async function api(caminho, metodo = "GET", dados) {
+  if (demonstracao) {
+    if (caminho === "sessao") return {usuario: null, token: ""};
+    if (Object.hasOwn(catalogo, caminho)) return catalogo[caminho];
+    throw new Error("Este recurso precisa do servidor Flask da clínica.");
+  }
   const resposta = await fetch("/api/" + caminho, {
     method: metodo,
     headers: {
@@ -105,7 +174,7 @@ function mostrarEspecialidades() {
       .map(
         (e) => `<article class="card">
     <span class="tile">${icone(simbolos[e.id - 1] || "clinica")}</span><h3>${seguro(e.nome)}</h3>
-    <p>${seguro(e.descricao)}</p><a class="link" href="/pages/medicos.html?especialidade=${e.id}">Ver médicos ${icone("arrow")}</a></article>`,
+    <p>${seguro(e.descricao)}</p><a class="link" href="${raiz}pages/medicos.html?especialidade=${e.id}">Ver médicos ${icone("arrow")}</a></article>`,
       )
       .join("") || vazio("Nenhuma especialidade encontrada.");
 }
@@ -122,9 +191,9 @@ function mostrarMedicos() {
     itens
       .map(
         (m) => `<article class="doc">
-    <img loading="lazy" src="/img/${seguro(m.foto)}.${m.foto === "perfil" ? "svg" : "webp"}" alt="${seguro(m.nome)}">
+    <img loading="lazy" src="${raiz}img/${seguro(m.foto)}.${m.foto === "perfil" ? "svg" : "webp"}" alt="${seguro(m.nome)}">
     <div><p class="eyebrow">${seguro(m.especialidade)}</p><h3>${seguro(m.nome)}</h3>
-    <p><a class="link" href="/pages/agendamento.html?medico=${m.id}">Ver agenda ${icone("arrow")}</a></p></div></article>`,
+    <p><a class="link" href="${raiz}pages/agendamento.html?medico=${m.id}">Ver agenda ${icone("arrow")}</a></p></div></article>`,
       )
       .join("") || vazio("Nenhum médico encontrado.");
 }
@@ -139,7 +208,7 @@ function acesso(papel) {
         ? "Esta página requer uma conta de " + papel + "."
         : "Entre na sua conta para continuar.",
     ) +
-    '<a class="btn" href="/pages/cadastro.html?voltar=' +
+    '<a class="btn" href="' + raiz + 'pages/cadastro.html?voltar=' +
     destino +
     '">Área do paciente</a>';
   return false;
@@ -486,6 +555,11 @@ async function iniciar() {
       "aria-expanded",
       $("#nav").classList.toggle("aberto"),
     );
+  if (demonstracao && ["agendamento","minhas-consultas","cadastro","contato","administracao","perfil"].includes(pagina)) {
+    const area = document.querySelector("main > .section");
+    if (area) area.innerHTML = vazio("Esta área funciona na versão Flask da clínica. Na demonstração, explore as especialidades e a equipe médica.");
+    return;
+  }
   const sessao = await api("sessao");
   token = sessao.token;
   usuario = sessao.usuario;
@@ -528,3 +602,4 @@ iniciar().catch((erro) => {
   caixa.textContent = erro.message;
   $("#principal").prepend(caixa);
 });
+
